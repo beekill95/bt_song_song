@@ -33,6 +33,17 @@ void printMatrix(const Matrix* mat, const char* name)
 	}
 }
 
+void printArray(int rank, const float* arr, int size)
+{
+	int i;
+	printf("Process %d: ", rank);
+	for (i = 0; i < size - 1; ++i) {
+		printf("%f\t", arr[i]);
+	}
+
+	printf("%f\n", arr[size - 1]);
+}
+
 void processZeroWork(const Matrix* a, const Matrix* b, Matrix* result, int arrSize)
 {
 	int resultSize = result->row * result->col;
@@ -42,8 +53,8 @@ void processZeroWork(const Matrix* a, const Matrix* b, Matrix* result, int arrSi
 	// first send aRow, and then bCol
 	for (p = 1; p < resultSize; ++p) {
 		int r = p / result->col;
-		float* row = a->data + r;
-		float* col = b->data + (p - r * result->col);
+		float* row = a->data + r * a->col;
+		float* col = b->data + (p - r * result->col) * b->col;
 
 		MPI_Send(row, arrSize, MPI_FLOAT, p, A_ROW_TAG, MPI_COMM_WORLD);
 		MPI_Send(col, arrSize, MPI_FLOAT, p, B_COL_TAG, MPI_COMM_WORLD);
@@ -55,7 +66,7 @@ void processZeroWork(const Matrix* a, const Matrix* b, Matrix* result, int arrSi
 
 	// receive the result from other processes
 	for (p = 1; p < resultSize; ++p) {
-		int pResult;
+		float pResult;
 		MPI_Status status;
 		MPI_Recv(&pResult, 1, MPI_FLOAT, p, PROCESS_RESULT_TAG, MPI_COMM_WORLD, &status);
 
@@ -79,9 +90,12 @@ void otherProcessesWork(int rank, int arrSize)
 	MPI_Recv(bCol, arrSize, MPI_FLOAT, 0, B_COL_TAG, MPI_COMM_WORLD, &status);
 
 	// compute the result
+	printArray(rank, aRow, arrSize);
+	printArray(rank, bCol, arrSize);
 	float result = multiplyArray(aRow, bCol, arrSize);
 
 	// send the result back to the process zero
+	printf("Rank %d yields %f\n", rank, result);
 	MPI_Send(&result, 1, MPI_FLOAT, 0, PROCESS_RESULT_TAG, MPI_COMM_WORLD);
 
 	free(aRow);
