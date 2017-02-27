@@ -75,8 +75,8 @@ int main(int argc, char** argv)
 	for (i = 0; i < resultSize; ++i) {
 		if (rank == 0) {
 			int r = i / result->col;
-			row = a->data + r;
-			col = b->data + (i - r * result->col);
+			row = a->data + r * a->col;
+			col = b->data + (i - r * result->col) * b->col;
 		}
 
 		// scatter vectors' elements to other processes
