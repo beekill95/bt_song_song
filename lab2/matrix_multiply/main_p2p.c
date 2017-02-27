@@ -1,5 +1,6 @@
 #include <mpi.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "matrix.h"
 #include "io.h"
 
@@ -40,8 +41,9 @@ void processZeroWork(const Matrix* a, const Matrix* b, Matrix* result, int arrSi
 	// send the aRow and bCol to other processes
 	// first send aRow, and then bCol
 	for (p = 1; p < resultSize; ++p) {
-		float* row = a->data + (p / a->col);
-		float* col = b->data + (p / b->col);
+		int r = p / result->col;
+		float* row = a->data + r;
+		float* col = b->data + (p - r * result->col);
 
 		MPI_Send(row, arrSize, MPI_FLOAT, p, A_ROW_TAG, MPI_COMM_WORLD);
 		MPI_Send(col, arrSize, MPI_FLOAT, p, B_COL_TAG, MPI_COMM_WORLD);
@@ -64,7 +66,7 @@ void processZeroWork(const Matrix* a, const Matrix* b, Matrix* result, int arrSi
 	printMatrix(result, "result");
 }
 
-void otherProcessesWork(int /*rank*/, int arrSize)
+void otherProcessesWork(int rank, int arrSize)
 {
 	float* aRow = (float*)calloc(arrSize, sizeof(float));
 	float* bCol = (float*)calloc(arrSize, sizeof(float));
@@ -107,10 +109,19 @@ int main(int argc, char** argv)
 		// check whether we load the matrices successfully
 		if (!a || !b)
 			MPI_Abort(MPI_COMM_WORLD, -1);
-		else if (a->col != b->col)
+		else if (a->col != b->col) {
+			destroyMatrix(&a);
+			destroyMatrix(&b);
+
 			// check whether the matrices we loaded
 			// are able to multiply together
 			MPI_Abort(MPI_COMM_WORLD, -1);
+		} else if (size != a->row * b->row) {
+			destroyMatrix(&a);
+			destroyMatrix(&b);
+			fprintf(stderr, "Please choose the number of processes equal to the size of result matrix, i.e %d\n", a->row * b->row);
+			MPI_Abort(MPI_COMM_WORLD, -1);
+		}
 
 		// print the loaded matrices
 		printMatrix(a, "a");
@@ -135,8 +146,7 @@ int main(int argc, char** argv)
 			processZeroWork(a, b, result, arrSize);
 		else
 			otherProcessesWork(rank, arrSize);
-	} else
-		fprintf(stderr, "Please choose the number of processes equal to the size of result matrix, i.e %d\n", resultSize);
+	}
 
 	// free up memory
 	if (a)
