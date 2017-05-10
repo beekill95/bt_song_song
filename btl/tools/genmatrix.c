@@ -3,8 +3,8 @@
 #include <string.h>
 #include <time.h>
 
-#define FILE_MAT_A "a.mat"
-#define FILE_MAT_B "b.mat"
+#define FILE_MAT_A "a.mat.bin"
+#define FILE_MAT_B "b.mat.bin"
 
 void showHelp()
 {
@@ -17,22 +17,29 @@ void showHelp()
 
 void genMatrixToFile(int matrixSize, char* matrixFile)
 {
-	FILE* file = fopen(matrixFile, "w");
+	FILE* file = fopen(matrixFile, "wb");
+	int* row;
 	int i, j;
 
-	if (file == 0) {
-		printf("Error: Cannot open file %s to write", matrixFile);
+	// write matrix size
+	fwrite(&matrixSize, sizeof(int), 1, file);
+	fwrite(&matrixSize, sizeof(int), 1, file);
+
+	// write matrix elements
+	row = (int*) calloc(matrixSize, sizeof(int));
+	if (!row) {
+		fprintf(stderr, "Cannot initialize array to store matrix element");
 		return;
 	}
 
-	fprintf(file, "%d %d\n", matrixSize, matrixSize);
 	for (i = 0; i < matrixSize; ++i) {
 		for (j = 0; j < matrixSize; ++j) {
-			fprintf(file, " %d", rand() % 100);
+			row[j] = rand() % 100;
 		}
-		fprintf(file, "\n");
+		fwrite(row, sizeof(int), matrixSize, file);
 	}
 
+	fflush(file);
 	fclose(file);
 }
 
