@@ -8,36 +8,7 @@
  * @param file the FILE struct that is returned from fopen and not equals null
  * @return the row of the matrix if no errors occur
  * */
-int loadMatrixSizeFromFileBinary(FILE* file)
-{
-	int row, col;
-	fread(&row, 1, sizeof(int), file);
-	fread(&col, 1, sizeof(int), file);
-
-	if (row != col) {
-		fprintf(stderr, "Unimplemented when row not equals col\n");
-		return 0;
-	}
-
-	return row;
-}
-
-int loadMatrixSizeFromPathBinary(const char* filePath)
-{
-	FILE* file;
-	int row;
-
-	file = fopen(filePath, "rb");
-	if (!file) {
-		fprintf(stderr, "Cannot open file %s to load matrix size\n", filePath);
-		return 0;
-	}
-
-	row = loadMatrixSizeFromFileBinary(file);
-
-	fclose(file);
-	return row;
-}
+int loadMatrixSizeFromFileBinary(FILE* file);
 
 template<typename T>
 T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex)
