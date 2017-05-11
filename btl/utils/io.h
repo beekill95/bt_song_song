@@ -1,6 +1,7 @@
 #ifndef IO_H
 #define IO_H
 #include <stdio.h>
+#include <mpi.h>
 
 /**
  * Load matrix size from file path
@@ -28,6 +29,16 @@ template<typename T>
 T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex);
 
 /**
+ *
+ * */
+//int* loadMatrixRowFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, int rowIndex);
+
+/**
+ *
+ * */
+int* loadMatrixRowsFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, int beginIndex, int endIndex);
+
+/**
  * The function will open a FILE from file path and
  * load a whole matrix row at rowIndex and return the loaded row.
  *
@@ -51,5 +62,10 @@ T* loadMatrixRowFromPathBinary(const char* filePath, int rowIndex);
 template<typename T>
 void saveMatrixRowToFileBinary(FILE* file, int rowIndex, int cols, const T* row);
 
-#include "io.c"
+/**
+ *
+ * */
+void saveMatrixRowsToFileBinaryParallel(MPI_FILE* file, int beginIndex, int endIndex, int cols, const int* manyRows);
+
+#include "io_impl.h"
 #endif
