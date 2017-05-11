@@ -4,6 +4,8 @@
 #include <mpi.h>
 #include "utils/io.h"
 
+#define TAG 0
+#define RESULT_MATRIX_FILE "result.mat.bin"
 /**
  * Multiply two vectors
  *
@@ -33,10 +35,16 @@ void multiplyMatrices(const int* mtA, const int* mtB, int row, int col, int* res
 	for (int i = 0; i < row; ++i) {
 		for (int j = 0; j < row; ++j) {
 			int res = multiplyVectors(mtA + i * col, mtB + j * col, col);
-			int idx = ;
+			int idx = i*col + j;
 			result[idx] = res;
 		}
 	}
+}
+
+void swapAddress(int*& mtA, int*& mtB){
+	int* mtC = mtA;
+	mtA = mtB;
+	mtB = mtC;
 }
 
 // assume that matrixSize % processCount == 0
@@ -45,21 +53,33 @@ void process(int rank, int processCount, int matrixSize)
 	assert(matrixSize % processCount == 0);
 	int begin = rank * matrixSize / processCount;
 	int end = (rank + 1) * matrixSize / processCount;
+	MPI_Status status;
+	int blockMatrixSize = (end - begin) * matrixSize;
 
 	// load matrix data from begin to end
 	int* matrixDataA;
 	int* matrixDataB;
-
+	// matrix to save recieved maxtrix from previous process
+	int* matrixDataC = new int[blockMatrixSize];
 	// intialize result matrix
-	int* matrixDataResult = new int[(end - begin) * matrixSize];
+	int* matrixDataResult = new int[blockMatrixSize];
 
 	// multiply matrix data first
 	multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult);
 
+	MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
+	
+	//
 	for (int i = 0; i < processCount - 1; ++i) {
-		
+	  	if(rank != 0)
+			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
+		else
+			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
+		swapAddress(matrixDataB, matrixDataC);
+		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * sizeof(int));
 	}
 
+	
 }
 
 int main(int argc, char** argv)
