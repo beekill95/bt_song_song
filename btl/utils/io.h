@@ -36,7 +36,7 @@ T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex);
 /**
  *
  * */
-int* loadMatrixRowsFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, int beginIndex, int endIndex);
+int* loadMatrixRowsFromFileBinaryParallel(MPI_File* file, int rows, int cols, int beginIndex, int endIndex);
 
 /**
  * The function will open a FILE from file path and
@@ -65,7 +65,7 @@ void saveMatrixRowToFileBinary(FILE* file, int rowIndex, int cols, const T* row)
 /**
  *
  * */
-void saveMatrixRowsToFileBinaryParallel(MPI_FILE* file, int beginIndex, int endIndex, int cols, const int* manyRows);
+void saveMatrixRowsToFileBinaryParallel(MPI_File* file, int beginIndex, int endIndex, int cols, const int* manyRows);
 
 #include "io_impl.h"
 #endif

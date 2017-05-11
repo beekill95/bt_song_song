@@ -2,7 +2,7 @@
 #include <assert.h>
 #define BUFFER_SIZE 256
 
-int* loadMatrixRowsFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, int beginIndex, int endIndex)
+int* loadMatrixRowsFromFileBinaryParallel(MPI_File* file, int rows, int cols, int beginIndex, int endIndex)
 {
 	if (beginIndex < 0 || beginIndex >= rows || endIndex < 0 || endIndex >= rows) {
 		fprintf(stderr, "Invalid row range: (%d - %d) for matrix size (%d, %d)\n", beginIndex, endIndex, rows, cols);
@@ -35,7 +35,7 @@ int* loadMatrixRowsFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, in
 	return manyRows;
 }
 
-void saveMatrixRowsToFileBinaryParallel(MPI_FILE* file, int beginIndex, int endIndex, int cols, const int* manyRows)
+void saveMatrixRowsToFileBinaryParallel(MPI_File* file, int beginIndex, int endIndex, int cols, const int* manyRows)
 {
 	assert(beginIndex >= 0);
 	assert(beginIndex < endIndex);
