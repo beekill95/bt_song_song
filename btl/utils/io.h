@@ -31,6 +31,12 @@ T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex);
 /**
  *
  * */
+template<typename T>
+T* loadMatrixRowsFromFileBinary(FILE* file, int rows, int cols, int beginIndex, int endIndex);
+
+/**
+ *
+ * */
 //int* loadMatrixRowFromFileBinaryParallel(MPI_FILE* file, int rows, int cols, int rowIndex);
 
 /**
@@ -50,6 +56,12 @@ template<typename T>
 T* loadMatrixRowFromPathBinary(const char* filePath, int rowIndex);
 
 /**
+ *
+ * */
+template<typename T>
+T* loadMatrixRowFromPathBinary(const char* filePath, int beginIndex, int endIndex);
+
+/**
  * Save a whole matrix row to the specified row index. The function assumes that
  * the FILE struct is not null and the file position is pointing to the first element
  * in the matrix
@@ -61,6 +73,18 @@ T* loadMatrixRowFromPathBinary(const char* filePath, int rowIndex);
  * */
 template<typename T>
 void saveMatrixRowToFileBinary(FILE* file, int rowIndex, int cols, const T* row);
+
+/**
+ *
+ * */
+template<typename T>
+void saveMatrixRowsToFileBinary(FILE* file, int beginIndex, int endIndex, int cols, const T* rows);
+
+/**
+ *
+ * */
+template<typename T>
+void saveMatrixRowsToPathBinary(const char* filePath, int beginIndex, int endIndex, int cols, const T* rows);
 
 /**
  *

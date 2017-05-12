@@ -1,6 +1,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define A_MATRIX_FILE "a.mat.bin"
+#define B_MATRIX_FILE "b.mat.bin"
+
 /**
  * Multiply two vectors
  *

@@ -14,14 +14,13 @@ template<typename T>
 T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex)
 {
 	T* row;
-	size_t read;
 
 	if (rowIndex < 0 || rowIndex >= rows) {
 		fprintf(stderr, "Invalid row index: %d with matrix size (%d, %d)\n", rowIndex, rows, cols);
 		return 0;
 	}
 
-	row = (T*) calloc(cols, sizeof(T));
+	row = new T[cols];
 	if (!row) {
 		fprintf(stderr, "Failed to initialize memory block to store row's element");
 		return 0;
@@ -31,9 +30,10 @@ T* loadMatrixRowFromFileBinary(FILE* file, int rows, int cols, int rowIndex)
 	fseek(file, rowIndex * cols * sizeof(T), SEEK_CUR);
 
 	// read the whole block of elements to row
-	read = fread(row, sizeof(T), cols, file);
+	int read = fread(row, sizeof(T), cols, file);
 	if (read != cols) {
-		fprintf(stderr, "Failed while reading: The number of read elements is different from expected");
+		fprintf(stderr, "Failed while reading: The number of read elements is different from expected\n");
+		delete[] row;
 		return 0;
 	}
 
@@ -66,10 +66,79 @@ T* loadMatrixRowFromPathBinary(const char* filePath, int rowIndex)
 }
 
 template<typename T>
+T* loadMatrixRowsFromFileBinary(FILE* file, int rows, int cols, int beginIndex, int endIndex)
+{
+	if (beginIndex < 0 || beginIndex >= rows || endIndex < 0 || endIndex > rows) {
+		fprintf(stderr, "Invalid row range %d - %d for matrix size (%d, %d)\n", rows, cols, beginIndex, endIndex);
+		return 0;
+	}
+
+	int elementCount = (endIndex - beginIndex) * cols;
+	T* manyRows = new T[elementCount];
+	if (!manyRows) {
+		fprintf(stderr, "Cannot allocate memory to store matrix loaded from file\n");
+		return 0;
+	}
+
+	fseek(file, beginIndex * cols * sizeof(T), SEEK_CUR);
+	int read = fread(manyRows, sizeof(T), elementCount, file);
+	if (read != elementCount) {
+		fprintf(stderr, "Not reading enough elements from file\n");
+		delete[] manyRows;
+		return 0;
+	}
+
+	return manyRows;
+}
+
+template<typename T>
+T* loadMatrixRowsFromPathBinary(const char* filePath, int beginIndex, int endIndex)
+{
+	FILE* file = fopen(filePath, "rb");
+	if (!file) {
+		fprintf(stderr, "Cannot read file from path %s\n", filePath);
+		return 0;
+	}
+
+	int rows = loadMatrixSizeFromFileBinary(file);
+	if (!rows) {
+		return 0;
+	}
+
+	fseek(file, 2 * sizeof(T), SEEK_SET);
+	T* manyRows = loadMatrixRowsFromFileBinary<T>(file, rows, rows, beginIndex, endIndex);
+	fclose(file);
+	return manyRows;
+}
+
+template<typename T>
 void saveMatrixRowToFileBinary(FILE* file, int rowIndex, int cols, const T* row)
 {
-	assert(rowIndex > 0);
+	assert(rowIndex >= 0);
 	assert(cols > 0);
 	fseek(file, rowIndex * cols * sizeof(T), SEEK_CUR);
 	fwrite(row, sizeof(T), cols, file);
+}
+
+template<typename T>
+void saveMatrixRowsToFileBinary(FILE* file, int beginIndex, int endIndex, int cols, const T* rows)
+{
+	for (int i = beginIndex; i < endIndex; ++i) {
+		saveMatrixRowToFileBinary(file, i, cols, rows + i * cols);
+		fseek(file, 2 * sizeof(T), SEEK_SET);
+	}
+}
+
+template<typename T>
+void saveMatrixRowsToPathBinary(const char* filePath, int beginIndex, int endIndex, int cols, const T* rows)
+{
+	FILE* file = fopen(filePath, "wb");
+	if (!file) {
+		fprintf(stderr, "Cannot open file %s to write\n", filePath);
+		return;
+	}
+
+	fseek(file, 2 * sizeof(T), SEEK_SET);
+	saveMatrixRowsToFileBinary<T>(file, beginIndex, endIndex, cols, rows);
+	fclose(file);
 }
