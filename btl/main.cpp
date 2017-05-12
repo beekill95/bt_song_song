@@ -3,68 +3,12 @@
 #include <assert.h>
 #include <mpi.h>
 #include "utils/io.h"
+#include "common.h"
 
 #define TAG 0
 #define A_MATRIX_FILE "a.mat.bin"
 #define B_MATRIX_FILE "b.mat.bin"
 #define RESULT_MATRIX_FILE "result.mat.bin"
-
-/**
- * Multiply two vectors
- *
- * @param vtA a vector to multiply
- * @param vtB a vector to multiply
- * @param size the size of the vector to multiply
- * @return the production of two vectors
- * */
-int multiplyVectors(const int* vtA, const int* vtB, int size)
-{
-	int sum = 0;
-	for (int i = 0; i < size; ++i) {
-		sum += vtA[i] * vtB[i];
-	}
-	return sum;
-}
-
-/**
- * Multiply two matrices together: mtA * mtB. Note that: mtB is already a transposed matrix.
- *
- * @param mtA matrix A to multiply
- * @param mtB matrix B to multiply. This matrix is already tranposed
- * @param row
- * */
-void multiplyMatrices(const int* mtA, const int* mtB, int row, int col, int* result)
-{
-	for (int i = 0; i < row; ++i) {
-		for (int j = 0; j < row; ++j) {
-			int res = multiplyVectors(mtA + i * col, mtB + j * col, col);
-			int idx = i*col + j;
-			result[idx] = res;
-		}
-	}
-}
-
-void swapAddress(int*& mtA, int*& mtB){
-	int* mtC = mtA;
-	mtA = mtB;
-	mtB = mtC;
-}
-
-void printMatrix(const int* matrix, int rows, int cols, int process = 0, const char* matrixName = "")
-{
-	printf("Process %d: Matrix %s\n", process, matrixName);
-	for (int i = 0; i < rows; ++i) {
-		for (int j = 0; j < cols; ++j) {
-			printf("%d ", matrix[i * cols + j]);
-		}
-		printf("\n");
-	}
-}
-
-inline int minusOneWrapAround(int value, int endValue)
-{
-	return value - 1 < 0 ? value - 1 + endValue : value - 1;
-}
 
 // assume that matrixSize % processCount == 0
 void process(int rank, int processCount, int matrixSize)
