@@ -6,9 +6,7 @@
 #include "common.h"
 
 #define TAG 0
-#define A_MATRIX_FILE "a.mat.bin"
-#define B_MATRIX_FILE "b.mat.bin"
-#define RESULT_MATRIX_FILE "result.mat.bin"
+#define RESULT_MATRIX_FILE "result_two_sided.mat.bin"
 
 // assume that matrixSize % processCount == 0
 void process(int rank, int processCount, int matrixSize)
