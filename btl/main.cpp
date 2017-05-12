@@ -50,14 +50,20 @@ void swapAddress(int*& mtA, int*& mtB){
 	mtB = mtC;
 }
 
-void printMatrix(const int* matrix, int rows, int cols)
+void printMatrix(const int* matrix, int rows, int cols, int process = 0, const char* matrixName = "")
 {
+	printf("Process %d: Matrix %s\n", process, matrixName);
 	for (int i = 0; i < rows; ++i) {
 		for (int j = 0; j < cols; ++j) {
 			printf("%d ", matrix[i * cols + j]);
 		}
 		printf("\n");
 	}
+}
+
+inline int minusOneWrapAround(int value, int endValue)
+{
+	return value - 1 < 0 ? value - 1 + endValue : value - 1;
 }
 
 // assume that matrixSize % processCount == 0
@@ -80,9 +86,9 @@ void process(int rank, int processCount, int matrixSize)
 	MPI_File_close(&matrixFileA);
 	MPI_File_close(&matrixFileB);
 
-	printMatrix(matrixDataA, matrixSize, matrixSize);
+	printMatrix(matrixDataA, end - begin, matrixSize, rank, "A");
 	printf("\n");
-	printMatrix(matrixDataB, matrixSize, matrixSize);
+	printMatrix(matrixDataB, end - begin, matrixSize, rank, "B");
 	printf("\n");
 
 	// matrix to save recieved maxtrix from previous process
@@ -91,20 +97,25 @@ void process(int rank, int processCount, int matrixSize)
 	int* matrixDataResult = new int[blockMatrixSize];
 
 	// multiply matrix data first
-	multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult);
-	MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
+	multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * rank);
 	
 	//
-	for (int i = 0; i < processCount - 1; ++i) {
-	  	if(rank != 0)
-			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
-		else
-			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
+	int i = minusOneWrapAround(rank, processCount);
+	while (i != rank) {
+		printf("Process %d is at epoch %d\n", rank, i);
+		MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
+		MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), TAG, MPI_COMM_WORLD, &status);
+//	  	if(rank != 0)
+//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
+//		else
+//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
 		swapAddress(matrixDataB, matrixDataC);
-		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * sizeof(int));
+		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * i);
+
+		i = minusOneWrapAround(i, processCount);
 	}
 
-	printMatrix(matrixDataResult, matrixSize, matrixSize);
+	printMatrix(matrixDataResult, end - begin, matrixSize, rank, "result");
 
 	// save result matrices to file
 	MPI_File_open(MPI_COMM_WORLD, RESULT_MATRIX_FILE, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &matrixFileResult);
@@ -115,6 +126,10 @@ void process(int rank, int processCount, int matrixSize)
 	}
 	saveMatrixRowsToFileBinaryParallel(&matrixFileResult, begin, end, matrixSize, matrixDataResult);
 	MPI_File_close(&matrixFileResult);
+
+	delete[] matrixDataA;
+	delete[] matrixDataB;
+	delete[] matrixDataC;
 }
 
 int main(int argc, char** argv)
