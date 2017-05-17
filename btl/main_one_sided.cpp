@@ -2,11 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include <mpi.h>
+#include <cstring>
 #include "utils/io.h"
 #include "common.h"
 
 #define TAG 0
-#define RESULT_MATRIX_FILE "result_two_sided.mat.bin"
+#define RESULT_MATRIX_FILE "result_one_sided.mat.bin"
 
 // assume that matrixSize % processCount == 0
 void process(int rank, int processCount, int matrixSize)
@@ -29,15 +30,11 @@ void process(int rank, int processCount, int matrixSize)
 	MPI_File_close(&matrixFileA);
 	MPI_File_close(&matrixFileB);
 
-	printMatrix(matrixDataA, end - begin, matrixSize, rank, "A");
-	printf("\n");
-	printMatrix(matrixDataB, end - begin, matrixSize, rank, "B");
-	printf("\n");
 
 	// create shared matrix and copy data read from file
-	int* matrixDataB;
+	int* matrixDataB = new int[blockMatrixSize];
 	MPI_Win_create(matrixDataB,matrixSize,sizeof(int),MPI_INFO_NULL,MPI_COMM_WORLD,&win);
-	std::memcpy(matrixDataB,matrixDataBTemp,matrixSize*sizeof(int));
+	memcpy(matrixDataB,matrixDataBTemp,matrixSize*sizeof(int));
 
 	// matrix to save recieved maxtrix from previous process
 	int* matrixDataC = new int[blockMatrixSize];
@@ -53,12 +50,8 @@ void process(int rank, int processCount, int matrixSize)
 	while (i != rank) {
 		printf("Process %d is at epoch %d\n", rank, i);
 		MPI_Win_fence(0,win);
-                MPI_Get(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), 0, blockMatrixSize, MPI_INT, win);
-                MPI_Win_fence(0,win);
-//	  	if(rank != 0)
-//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
-//		else
-//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
+        MPI_Get(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), 0, blockMatrixSize, MPI_INT, win);
+        MPI_Win_fence(0,win);
 		// copy to shared matrix
 		std::memcpy(matrixDataB,matrixDataC,matrixSize*sizeof(int));
 
