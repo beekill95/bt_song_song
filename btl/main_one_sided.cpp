@@ -14,6 +14,7 @@ void process(int rank, int processCount, int matrixSize)
 	assert(matrixSize % processCount == 0);
 	int begin = rank * matrixSize / processCount;
 	int end = (rank + 1) * matrixSize / processCount;
+	MPI_Win win;
 	printf("(%d, %d)\n", begin, end);
 
 	int blockMatrixSize = (end - begin) * matrixSize;
@@ -24,7 +25,7 @@ void process(int rank, int processCount, int matrixSize)
 	MPI_File_open(MPI_COMM_WORLD, A_MATRIX_FILE, MPI_MODE_RDONLY, MPI_INFO_NULL, &matrixFileA);
 	MPI_File_open(MPI_COMM_WORLD, B_MATRIX_FILE, MPI_MODE_RDONLY, MPI_INFO_NULL, &matrixFileB);
 	int* matrixDataA = loadMatrixRowsFromFileBinaryParallel(&matrixFileA, matrixSize, matrixSize, begin, end);
-	int* matrixDataB = loadMatrixRowsFromFileBinaryParallel(&matrixFileB, matrixSize, matrixSize, begin, end);
+	int* matrixDataBTemp = loadMatrixRowsFromFileBinaryParallel(&matrixFileB, matrixSize, matrixSize, begin, end);
 	MPI_File_close(&matrixFileA);
 	MPI_File_close(&matrixFileB);
 
@@ -33,8 +34,14 @@ void process(int rank, int processCount, int matrixSize)
 	printMatrix(matrixDataB, end - begin, matrixSize, rank, "B");
 	printf("\n");
 
+	// create shared matrix and copy data read from file
+	int* matrixDataB;
+	MPI_Win_create(matrixDataB,matrixSize,sizeof(int),MPI_INFO_NULL,MPI_COMM_WORLD,&win);
+	std::memcpy(matrixDataB,matrixDataBTemp,matrixSize*sizeof(int));
+
 	// matrix to save recieved maxtrix from previous process
 	int* matrixDataC = new int[blockMatrixSize];
+
 	// intialize result matrix
 	int* matrixDataResult = new int[blockMatrixSize];
 
@@ -45,13 +52,16 @@ void process(int rank, int processCount, int matrixSize)
 	int i = minusOneWrapAround(rank, processCount);
 	while (i != rank) {
 		printf("Process %d is at epoch %d\n", rank, i);
-		MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
-		MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), TAG, MPI_COMM_WORLD, &status);
+		MPI_Win_fence(0,win);
+                MPI_Get(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), 0, blockMatrixSize, MPI_INT, win);
+                MPI_Win_fence(0,win);
 //	  	if(rank != 0)
 //			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
 //		else
 //			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
-		swapAddress(matrixDataB, matrixDataC);
+		// copy to shared matrix
+		std::memcpy(matrixDataB,matrixDataC,matrixSize*sizeof(int));
+
 		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * i);
 
 		i = minusOneWrapAround(i, processCount);
