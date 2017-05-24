@@ -33,8 +33,8 @@ void process(int rank, int processCount, int matrixSize)
 
 	// create shared matrix and copy data read from file
 	int* matrixDataB = new int[blockMatrixSize];
-	MPI_Win_create(matrixDataB,matrixSize,sizeof(int),MPI_INFO_NULL,MPI_COMM_WORLD,&win);
-	memcpy(matrixDataB,matrixDataBTemp,matrixSize*sizeof(int));
+	MPI_Win_create(matrixDataB,blockMatrixSize,sizeof(int),MPI_INFO_NULL,MPI_COMM_WORLD,&win);
+	memcpy(matrixDataB,matrixDataBTemp,blockMatrixSize*sizeof(int));
 
 	// matrix to save recieved maxtrix from previous process
 	int* matrixDataC = new int[blockMatrixSize];
@@ -48,19 +48,22 @@ void process(int rank, int processCount, int matrixSize)
 	//
 	int i = minusOneWrapAround(rank, processCount);
 	while (i != rank) {
-		printf("Process %d is at epoch %d\n", rank, i);
+		//printf("Process %d is at epoch %d\n", rank, i);
 		MPI_Win_fence(0,win);
         MPI_Get(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), 0, blockMatrixSize, MPI_INT, win);
         MPI_Win_fence(0,win);
+		MPI_Barrier(MPI_COMM_WORLD);
+		//printMatrix(matrixDataC, end-begin, matrixSize, 0, "matrix C");
+
 		// copy to shared matrix
-		std::memcpy(matrixDataB,matrixDataC,matrixSize*sizeof(int));
+		std::memcpy(matrixDataB,matrixDataC,blockMatrixSize*sizeof(int));
 
 		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * i);
 
 		i = minusOneWrapAround(i, processCount);
 	}
 
-	printMatrix(matrixDataResult, end - begin, matrixSize, rank, "result");
+	//printMatrix(matrixDataResult, end - begin, matrixSize, rank, "result");
 
 	// save result matrices to file
 	MPI_File_open(MPI_COMM_WORLD, RESULT_MATRIX_FILE, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &matrixFileResult);

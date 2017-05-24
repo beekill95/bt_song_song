@@ -28,11 +28,6 @@ void process(int rank, int processCount, int matrixSize)
 	MPI_File_close(&matrixFileA);
 	MPI_File_close(&matrixFileB);
 
-	printMatrix(matrixDataA, end - begin, matrixSize, rank, "A");
-	printf("\n");
-	printMatrix(matrixDataB, end - begin, matrixSize, rank, "B");
-	printf("\n");
-
 	// matrix to save recieved maxtrix from previous process
 	int* matrixDataC = new int[blockMatrixSize];
 	// intialize result matrix
@@ -44,13 +39,9 @@ void process(int rank, int processCount, int matrixSize)
 	//
 	int i = minusOneWrapAround(rank, processCount);
 	while (i != rank) {
-		printf("Process %d is at epoch %d\n", rank, i);
+	//	printf("Process %d is at epoch %d\n", rank, i);
 		MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
 		MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), TAG, MPI_COMM_WORLD, &status);
-//	  	if(rank != 0)
-//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, rank - 1, TAG, MPI_COMM_WORLD, &status);
-//		else
-//			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, processCount - 1, TAG, MPI_COMM_WORLD, &status);
 		swapAddress(matrixDataB, matrixDataC);
 		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * i);
 
