@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "utils/io.h"
 #include "common.h"
+#include <time.h>
 
 #define RESULT_MATRIX_FILE "result_seq.mat.bin"
 
@@ -14,6 +15,7 @@ int main()
 		return 1;
 	}
 
+	clock_t startTime = clock();
 	int* matrixDataA = loadMatrixRowsFromPathBinary<int>(A_MATRIX_FILE, 0, matrixSizeA);
 	int* matrixDataB = loadMatrixRowsFromPathBinary<int>(B_MATRIX_FILE, 0, matrixSizeB);
 	if (!matrixDataA || !matrixDataB) {
@@ -42,6 +44,13 @@ int main()
 	delete[] matrixDataA;
 	delete[] matrixDataB;
 	delete[] matrixDataResult;
+	clock_t endTime = clock();
+
+	// print the time result
+	printf("Process %d:\n"
+		   "\tStarted at:\t%f\n"
+		   "\tEnded at:\t%f\n"
+		   "\tTotal:\t%f\n", 0, (double)startTime/CLOCKS_PER_SEC, (double)endTime/CLOCKS_PER_SEC, (double)(endTime - startTime)/CLOCKS_PER_SEC);
 
 	return 0;
 }

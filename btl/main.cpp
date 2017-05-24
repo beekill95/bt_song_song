@@ -38,17 +38,26 @@ void process(int rank, int processCount, int matrixSize)
 	
 	//
 	int i = minusOneWrapAround(rank, processCount);
+	int nextProcess = (rank + 1) % processCount;
+	int prevProcess = minusOneWrapAround(rank, processCount);
 	while (i != rank) {
-	//	printf("Process %d is at epoch %d\n", rank, i);
-		MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, (rank + 1) % processCount, TAG, MPI_COMM_WORLD);
-		MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, minusOneWrapAround(rank, processCount), TAG, MPI_COMM_WORLD, &status);
+		// even process will send first, and then odd process will send
+		if (rank % 2 == 0) {
+			MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, nextProcess, TAG, MPI_COMM_WORLD);
+			//printf("Process %d has sent to #%d and receiving from #%d\n", rank, nextProcess, prevProcess);
+			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, prevProcess, TAG, MPI_COMM_WORLD, &status);
+		} else {
+			MPI_Recv(matrixDataC, blockMatrixSize, MPI_INT, prevProcess, TAG, MPI_COMM_WORLD, &status);
+			//printf("Process %d has sent to #%d and receiving from #%d\n", rank, nextProcess, prevProcess);
+			MPI_Send(matrixDataB, blockMatrixSize, MPI_INT, nextProcess, TAG, MPI_COMM_WORLD);
+		}
 		swapAddress(matrixDataB, matrixDataC);
 		multiplyMatrices(matrixDataA, matrixDataB, end - begin, matrixSize, matrixDataResult + (end - begin) * i);
 
 		i = minusOneWrapAround(i, processCount);
 	}
 
-	printMatrix(matrixDataResult, end - begin, matrixSize, rank, "result");
+	//printMatrix(matrixDataResult, end - begin, matrixSize, rank, "result");
 
 	// save result matrices to file
 	MPI_File_open(MPI_COMM_WORLD, RESULT_MATRIX_FILE, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &matrixFileResult);
@@ -81,8 +90,14 @@ int main(int argc, char** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-	printf("Rank: %d, Size: %d\n", rank, size);
+	double startTime = MPI_Wtime();
 	process(rank, size, matrixSizeA);
+	double endTime = MPI_Wtime();
+
+	printf("Process %d:\n"
+		   "\tStarted at:\t%f\n"
+		   "\tEnded at:\t%f\n"
+		   "\tTotal:\t%f\n", rank, startTime, endTime, endTime - startTime);
 
 	MPI_Finalize();
 	return 0;
